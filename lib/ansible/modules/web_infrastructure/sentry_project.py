@@ -24,7 +24,7 @@ version_added: "2.8"
 options:
   api_token:
     description:
-      - API token generated in Sentry. The token has to have an acess for manipulating projects.
+      - API token generated in Sentry. The token sufficient access to manipulate projects.
     required: true
 
   organization:
@@ -39,7 +39,7 @@ options:
 
   project_slug:
     description:
-      - Slug name. Slug name must be uniq (even after project deletion you can't create a project with same slug name).
+      - Slug name. Slug name must be unique (even after project deletion you can't create a project with same slug name).
     required: true
 
   state:
@@ -50,7 +50,7 @@ options:
 
   team:
     description:
-      - A team you are in and which has an access for project manipulating.
+      - The name of the team to create a new project for.
 
   url:
     description:
