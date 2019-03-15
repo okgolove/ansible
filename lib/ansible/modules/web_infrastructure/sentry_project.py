@@ -54,8 +54,9 @@ options:
 
   url:
     description:
-      - Sentry URL with scheme.
-    required: true
+      - Sentry URL.
+    required: false
+    default: sentry.io
 
 author: "Mikhail Naletov (@okgolove)"
 '''
@@ -69,7 +70,7 @@ EXAMPLES = '''
     project_slug: backend
     state: present
     team: senior
-    url: https://sentry.example.com
+    url: sentry.example.com
 '''
 
 RETURN = ''' # '''
@@ -88,7 +89,7 @@ def main():
         project_slug=dict(required=True),
         state=dict(required=True, choices=['present', 'absent']),
         team=dict(required=True),
-        url=dict(required=True)
+        url=dict(default="sentry.io")
     )
 
     module = AnsibleModule(argument_spec=arg_spec, supports_check_mode=False)
