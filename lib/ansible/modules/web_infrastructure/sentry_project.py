@@ -104,6 +104,54 @@ from ansible.module_utils.urls import fetch_url
 from ansible.module_utils.six.moves.urllib.parse import urlparse
 
 
+def does_project_exist(module, api_token, project_name, organization, team, url):
+    response, info = fetch_url(
+        module, "{url}/api/0/teams/{organization}/{team}/projects/".format(
+            url=url, organization=organization, team=team),
+        headers={"Authorization": "Bearer {0}".format(api_token)},
+        method="GET")
+    if info["status"] != 200:
+        module.fail_json(msg="Unable to obtain a project list, response status: {0}, message: {1}".format(
+            info["status"], info.get("msg", "No message has been provided")))
+    body = json.loads(response.read())
+    return bool([x for x in body if x["name"] == project_name])
+
+
+def create_project(module, api_token, project_name, project_slug, organization, team, url):
+    response, info = fetch_url(
+        module, "{url}/api/0/teams/{organization}/{team}/projects/".format(
+            url=url, organization=organization, team=team
+        ),
+        headers={
+            "Authorization": "Bearer {0}".format(api_token),
+            "Content-Type": "application/json"
+        },
+        data=json.dumps({
+            "name": project_name,
+            "slug": project_slug
+        }),
+        method="POST")
+    if info["status"] != 201:
+        module.fail_json(
+            msg="Unable to create the project, response status: {0}, message: {1}".format(
+                info["status"], info.get("msg", "No message has been provided")))
+    module.exit_json(changed=True)
+
+def delete_project(module, api_token, project_slug, organization, url):
+    response, info = fetch_url(
+        module, "{url}/api/0/projects/{organization}/{project_slug}/".format(
+            url=url, organization=organization,
+            project_slug=project_slug),
+        headers={
+            "Authorization": "Bearer {0}".format(api_token),
+            "Content-Type": "application/json"
+        },
+        method="DELETE")
+    if info["status"] != 204:
+        module.fail_json(
+            msg="Unable to delete the project, response status: {0}, message: {1}".format(
+                info["status"], info.get("msg", "No message has been provided")))
+
 def main():
     arg_spec = dict(
         api_token=dict(type="str", required=True),
@@ -123,60 +171,25 @@ def main():
     project_slug = module.params['project_slug']
     state = module.params['state']
     team = module.params['team']
-    url = urlparse(module.params['url'])
+    parsed_url = urlparse(module.params['url'])
 
-    if not url.scheme:
-        url = "https://{0}".format(url.path)
-
-    def does_project_exist(project_name, organization, team, api_token):
-        response, info = fetch_url(
-            module, "{url}/api/0/teams/{organization}/{team}/projects/".format(
-                url=url, organization=organization, team=team),
-            headers={"Authorization": "Bearer {0}".format(api_token)},
-            method="GET")
-        if info["status"] != 200:
-            module.fail_json(msg="Unable to obtain a project list, response status: {0}, message: {1}".format(
-                info["status"], info.get("msg", "No message has been provided")))
-        body = json.loads(response.read())
-        return bool([x for x in body if x["name"] == project_name])
+    print(parsed_url)
+    if not parsed_url.scheme:
+        url = "https://{0}".format(parsed_url.path)
+    else:
+        url = module.params['url']
 
     if state == 'present':
-        if does_project_exist(project_name, organization, team, api_token):
+        if does_project_exist(module, api_token, project_name, organization, team, url):
             module.exit_json(changed=False)
         if not module.check_mode:
-            response, info = fetch_url(
-                module, "{url}/api/0/teams/{organization}/{team}/projects/".format(
-                    url=url, organization=organization, team=team
-                ),
-                headers={
-                    "Authorization": "Bearer {0}".format(api_token),
-                    "Content-Type": "application/json"
-                },
-                data=json.dumps({
-                    "name": project_name,
-                    "slug": project_slug
-                }),
-                method="POST")
-            if info["status"] != 201:
-                module.fail_json(msg="Unable to create the project, response status: {0}, message: {1}".format(
-                    info["status"], info.get("msg", "No message has been provided")))
+            create_project(module, api_token, project_name, project_slug, organization, team, url)
         module.exit_json(changed=True)
 
     if state == 'absent':
-        if does_project_exist(project_name, organization, team, api_token):
+        if does_project_exist(module, api_token, project_name, organization, team, url):
             if not module.check_mode:
-                response, info = fetch_url(
-                    module, "{url}/api/0/projects/{organization}/{project_slug}/".format(
-                        url=url, organization=organization,
-                        project_slug=project_slug),
-                    headers={
-                        "Authorization": "Bearer {0}".format(api_token),
-                        "Content-Type": "application/json"
-                    },
-                    method="DELETE")
-                if info["status"] != 204:
-                    module.fail_json(msg="Unable to delete the project, response status: {0}, message: {1}".format(
-                        info["status"], info.get("msg", "No message has been provided")))
+                delete_project(module, api_token, project_slug, organization, url)
             module.exit_json(changed=True)
         else:
             module.exit_json(changed=False)
